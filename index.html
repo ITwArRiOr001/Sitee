@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ninja Arena</title>
+  <style>
+    /* Unchanged CSS */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: linear-gradient(to right, #1a1a2e, #16213e, #0f0c29);
+      font-family: 'Roboto', sans-serif;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+    .container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+    .game-section, .peace-section {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transition: opacity 0.5s ease;
+    }
+    .game-section {
+      opacity: 1;
+    }
+    .peace-section {
+      opacity: 0;
+      pointer-events: none;
+      overflow: auto;
+      padding: 40px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .game-section.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .peace-section.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .ninjaBtn {
+      position: absolute;
+      width: 140px;
+      height: 130px;
+      font-size: 18px;
+      background: radial-gradient(circle at center, transparent 15%, #4b0082 16%);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(139, 0, 139, 0.3);
+      z-index: 10;
+      transition: transform 0.6s ease-in-out, left 0.6s ease-in-out, top 0.6s ease-in-out, background 0.3s ease, opacity 0.2s ease;
+      clip-path: polygon(50% 0%, 65% 35%, 100% 50%, 65% 65%, 50% 100%, 35% 65%, 0% 50%, 35% 35%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0;
+    }
+    .ninjaBtn:hover {
+      background: radial-gradient(circle at center, transparent 15%, #2e0057 16%);
+      transform: scale(1.1) rotate(45deg);
+      box-shadow: 0 0 24px rgba(139, 0, 139, 0.8);
+    }
+    .ninjaBtn.teleport {
+      transition: opacity 0.2s ease;
+    }
+    .score {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 20px;
+      background: rgba(75,0,130,0.3);
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(139,0,139,0.2);
+      z-index: 10;
+      box-shadow: 0 0 8px rgba(139,0,139,0.3);
+    }
+    .inputBox {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(45deg, rgba(75,0,130,0.7), rgba(25,25,112,0.7));
+      padding: 30px;
+      border-radius: 20px;
+      text-align: center;
+      z-index: 10;
+      opacity: 0;
+      animation: fadeIn 2s forwards;
+      border: 1px solid rgba(139,0,139,0.5);
+      box-shadow: 0 0 15px rgba(139,0,139,0.4);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translate(-50%, -60%); }
+      to { opacity: 1; transform: translate(-50%, -50%); }
+    }
+    @keyframes scaleIn {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+      to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    @keyframes vikingShake {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      25% { transform: translate(-50%, -50%) scale(1.02) rotate(1deg); }
+      50% { transform: translate(-50%, -50%) scale(1.02) rotate(-1deg); }
+      75% { transform: translate(-50%, -50%) scale(1.02) rotate(1deg); }
+    }
+    .inputBox input, .inputBox button {
+      padding: 10px;
+      margin: 8px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: none;
+    }
+    .inputBox input {
+      width: 200px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      box-shadow: 0 0 8px rgba(178,34,34,0.3);
+    }
+    .inputBox button {
+      margin-top: 10px;
+      padding: 12px 24px;
+      font-size: 18px;
+      background: linear-gradient(45deg, #b22222, #8b0000);
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(178,34,34,0.5);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .inputBox button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 18px rgba(178,34,34,0.8);
+    }
+    .cooldown-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(25,25,112,0.8);
+      color: #fff;
+      padding: 30px 40px;
+      font-size: 22px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(139,0,139,0.4);
+      text-align: center;
+      z-index: 99;
+      animation: fadeIn 2s ease-in-out;
+      border: 1px solid rgba(139,0,139,0.5);
+    }
+    .ninja-challenge {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 400px;
+      padding: 40px;
+      background: linear-gradient(45deg, #1a1a2e, #4b0082);
+      border: 3px solid #9400d3;
+      border-radius: 15px;
+      box-shadow: 0 0 30px rgba(139, 0, 139, 0.5), inset 0 0 10px rgba(0, 0, 0, 0.7);
+      text-align: center;
+      z-index: 100;
+      animation: vikingShake 2s infinite ease-in-out;
+      color: #e6e6fa;
+      font-family: 'Cinzel', serif;
+    }
+    .ninja-challenge h2 {
+      font-size: 32px;
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px rgba(139, 0, 139, 0.8);
+      letter-spacing: 2px;
+    }
+    .ninja-challenge p {
+      font-size: 20px;
+      margin-bottom: 30px;
+      text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    }
+    .ninja-challenge button {
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      font-family: 'Cinzel', serif;
+      text-transform: uppercase;
+    }
+    .ninja-challenge .continue-btn {
+      background: linear-gradient(45deg, #b22222, #8b0000);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(178, 34, 34, 0.7);
+    }
+    .ninja-challenge .continue-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 25px rgba(178, 34, 34, 1);
+    }
+    .ninja-challenge .quit-btn {
+      background: linear-gradient(45deg, #4a4a4a, #2f2f2f);
+      color: #ccc;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+    .ninja-challenge .quit-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+    }
+    .peace-nav {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      padding: 12px 24px;
+      font-size: 18px;
+      font-weight: bold;
+      background: #fff;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5), 0 0 10px rgba(255,255,255,0.3);
+      z-index: 10;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .peace-nav:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 24px rgba(255,255,255,0.5);
+    }
+    .peace-section h1 {
+      font-size: 36px;
+      margin-bottom: 30px;
+      text-shadow: 0 0 10px rgba(139,0,139,0.5);
+    }
+    table {
+      width: 80%;
+      max-width: 800px;
+      border-collapse: collapse;
+      background: linear-gradient(45deg, rgba(75,0,130,0.7), rgba(25,25,112,0.7));
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(139,0,139,0.4);
+      border: 1px solid rgba(139,0,139,0.5);
+    }
+    th, td {
+      padding: 15px;
+      text-align: left;
+      font-size: 18px;
+    }
+    th {
+      background: rgba(139,0,139,0.3);
+      color: #e6e6fa;
+      text-transform: uppercase;
+    }
+    tr:nth-child(even) {
+      background: rgba(25,25,112,0.2);
+    }
+    .clear-data-btn {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 18px;
+      background: #4b0082;
+      color: #fff;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(139,0,139,0.5);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .clear-data-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 24px rgba(139,0,139,0.8);
+    }
+    @media (max-width: 600px) {
+      .ninjaBtn {
+        width: 140px;
+        height: 130px;
+        font-size: 18px;
+      }
+      .score {
+        font-size: 16px;
+        padding: 10px 12px;
+      }
+      .inputBox input {
+        width: 160px;
+      }
+      .peace-nav, .clear-data-btn {
+        font-size: 16px;
+        padding: 10px 20px;
+      }
+      .peace-section h1 {
+        font-size: 28px;
+      }
+      table {
+        width: 95%;
+      }
+      th, td {
+        font-size: 16px;
+        padding: 10px;
+      }
+      .ninja-challenge {
+        width: 90%;
+        padding: 20px;
+      }
+      .ninja-challenge h2 {
+        font-size: 24px;
+      }
+      .ninja-challenge p {
+        font-size: 16px;
+      }
+      .ninja-challenge button {
+        padding: 12px 20px;
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="game-section" id="gameSection">
+      <div class="inputBox" id="inputBox">
+        <h1 style="white-space: nowrap;">Speak, brave soul.</h1>
+        <input type="text" id="firstNameInput" placeholder="Call Sign!" required /><br />
+        <input type="text" id="lastNameInput" placeholder="Clan Name!" required /><br />
+        <input type="number" id="ageInput" placeholder="Time Walked on Earth!" required /><br />
+        <button onclick="startArena()">Enter in Silence!</button>
+      </div>
+      <div class="score" id="scoreBox" style="display:none;">Score: 0</div>
+      <button class="ninjaBtn" id="ninjaBtn" style="display: none;">Shadow Strike</button>
+      <button class="peace-nav" id="peaceNavBtn">Zen Board</button>
+    </div>
+    <div class="peace-section" id="peaceSection">
+      <h1>Hall of Inner Peace</h1>
+      <table id="peaceTable">
+        <thead>
+          <tr>
+            <th>Full Name</th>
+            <th>Age</th>
+            <th>Zen Level</th>
+          </tr>
+        </thead>
+        <tbody id="peaceTableBody"></tbody>
+      </table>
+      <button class="peace-nav" onclick="toggleSection()">Return to Arena</button>
+      <button class="clear-data-btn" onclick="clearData()">Clear Data</button>
+    </div>
+  </div>
+  <script>
+    const btn = document.getElementById("ninjaBtn");
+    const scoreBox = document.getElementById("scoreBox");
+    const gameSection = document.getElementById("gameSection");
+    const peaceSection = document.getElementById("peaceSection");
+    const peaceNavBtn = document.getElementById("peaceNavBtn");
+    const inputBox = document.getElementById("inputBox");
+    let score = 0, firstName = "", lastName = "", age = "";
+    let isGameVisible = true;
+    let isPaused = false; // New flag to pause movement
+
+    function toggleSection() {
+      isGameVisible = !isGameVisible;
+      if (isGameVisible) {
+        gameSection.classList.remove("hidden");
+        peaceSection.classList.remove("visible");
+        peaceNavBtn.style.display = "none";
+        isPaused = false; // Resume movement
+      } else {
+        gameSection.classList.add("hidden");
+        peaceSection.classList.add("visible");
+        peaceNavBtn.style.display = "block";
+        peaceNavBtn.innerText = "Return to Arena";
+        loadPeaceLevels();
+        isPaused = true; // Pause movement
+      }
+    }
+
+    peaceNavBtn.addEventListener("click", toggleSection);
+
+    function startArena() {
+      firstName = document.getElementById("firstNameInput").value.trim();
+      lastName = document.getElementById("lastNameInput").value.trim();
+      age = document.getElementById("ageInput").value.trim();
+
+      if (!firstName || !lastName || !age || isNaN(age) || age <= 0) {
+        alert("Don't shy away, Warrior. Inner Peace awaits.");
+        return;
+      }
+
+      score = 0;
+      scoreBox.innerText = `${firstName} ${lastName} - Score: ${score}`;
+      inputBox.style.display = "none";
+      btn.style.display = "block";
+      btn.style.opacity = "1";
+      btn.style.left = "50%";
+      btn.style.top = "50%";
+      btn.style.transform = "rotate(90deg)";
+      scoreBox.style.display = "block";
+      peaceNavBtn.style.display = "none";
+      isPaused = false;
+      moveButtonLoop();
+    }
+
+    function showFeedback() {
+      isPaused = true; // Pause movement
+      const feedbackBox = document.createElement("div");
+      feedbackBox.innerHTML = `
+        <h2 style="font-size: 28px; margin-bottom: 20px; letter-spacing: 1px; white-space: nowrap;">Rate Your Inner Peace</h2>
+        <input type="range" id="peaceScale" min="0" max="50" value="0" style="
+          width: 220px; padding: 14px 0; background: transparent; cursor: pointer; outline: none;
+        "/>
+        <div id="peaceValue" style="
+          font-size: 18px; margin-top: 10px; color: rgba(255, 255, 255, 0.9); text-shadow: 0 0 5px rgba(139,0,139,0.5);
+        ">0</div>
+        <br><br>
+        <button onclick="submitFeedback()" style="
+          padding: 14px 28px; font-size: 18px; border: none; border-radius: 30px;
+          background: linear-gradient(45deg, #b22222, #8b0000); color: white; cursor: pointer;
+          box-shadow: 0 0 18px rgba(139,0,139,0.5); transition: transform 0.3s ease, box-shadow 0.3s ease;
+        " onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 24px rgba(139,0,139,0.8)'" 
+          onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 0 18px rgba(139,0,139,0.5)'">
+          Submit & Vanish
+        </button>
+        <button onclick="cancelFeedback()" style="
+          padding: 14px 28px; font-size: 18px; border: none; border-radius: 30px;
+          background: linear-gradient(45deg, #4a4a4a, #2f2f2f); color: #ccc; cursor: pointer;
+          margin-left: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+        " onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 15px rgba(0,0,0,0.7)'" 
+          onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 0 10px rgba(0,0,0,0.5)'">
+          Cancel
+        </button>
+      `;
+      feedbackBox.id = "feedbackBox";
+      feedbackBox.style.position = "absolute";
+      feedbackBox.style.top = "50%";
+      feedbackBox.style.left = "50%";
+      feedbackBox.style.transform = "translate(-50%, -50%) scale(0.9)";
+      feedbackBox.style.background = "linear-gradient(45deg, rgba(75,0,130,0.7), rgba(25,25,112,0.7))";
+      feedbackBox.style.backdropFilter = "blur(12px)";
+      feedbackBox.style.border = "2px solid rgba(139,0,139,0.5)";
+      feedbackBox.style.borderRadius = "24px";
+      feedbackBox.style.padding = "40px 50px";
+      feedbackBox.style.textAlign = "center";
+      feedbackBox.style.zIndex = "100";
+      feedbackBox.style.color = "white";
+      feedbackBox.style.boxShadow = "0 0 25px rgba(139,0,139,0.4)";
+      feedbackBox.style.animation = "scaleIn 0.8s ease forwards";
+      gameSection.appendChild(feedbackBox);
+
+      const slider = document.getElementById("peaceScale");
+      const valueDisplay = document.getElementById("peaceValue");
+      slider.addEventListener("input", () => {
+        valueDisplay.innerText = slider.value;
+      });
+    }
+
+    function submitFeedback() {
+      const peaceValue = parseInt(document.getElementById("peaceScale").value);
+      if (peaceValue === 0) {
+        alert("Select a value between 1 and 50, Shinobi.");
+        return;
+      }
+      if (peaceValue >= 1 && peaceValue <= 50) {
+        let allPeaceLevels = JSON.parse(localStorage.getItem("peaceLevels")) || [];
+        allPeaceLevels.push({ firstName, lastName, age, value: peaceValue });
+        localStorage.setItem("peaceLevels", JSON.stringify(allPeaceLevels));
+        alert("Your inner peace level has been stored. Vanish like the wind...");
+        const fb = document.getElementById("feedbackBox");
+        if (fb) fb.remove();
+        isPaused = false; // Resume movement
+      } else {
+        alert("Select a valid number between 1 and 50.");
+      }
+    }
+
+    function cancelFeedback() {
+      const fb = document.getElementById("feedbackBox");
+      if (fb) fb.remove();
+      isPaused = false; // Resume movement
+    }
+
+    function loadPeaceLevels() {
+      const peaceLevels = JSON.parse(localStorage.getItem("peaceLevels")) || [];
+      const tableBody = document.getElementById("peaceTableBody");
+      tableBody.innerHTML = "";
+      if (peaceLevels.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">No peace levels recorded yet.</td></tr>';
+        return;
+      }
+      peaceLevels.forEach(entry => {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${entry.firstName} ${entry.lastName}</td><td>${entry.age}</td><td>${entry.value}</td>`;
+        tableBody.appendChild(row);
+      });
+    }
+
+    function triggerCooldown() {
+      alert(`Now, get back to work, Warrior ${firstName}!`);
+      btn.style.display = "none";
+      peaceNavBtn.style.display = "block";
+      peaceNavBtn.innerText = "Zen Board";
+      isPaused = true;
+
+      const cooldownMsg = document.createElement("div");
+      cooldownMsg.innerText = `Warrior ${firstName}, rest thy blade. Return in 5 minutes...`;
+      cooldownMsg.className = "cooldown-message";
+      cooldownMsg.id = "cooldownMessage";
+      gameSection.appendChild(cooldownMsg);
+
+      setTimeout(() => {
+        score = 0;
+        scoreBox.innerText = `${firstName} ${lastName} - Score: ${score}`;
+        const msg = document.getElementById("cooldownMessage");
+        if (msg) msg.remove();
+        peaceNavBtn.style.display = "none";
+        inputBox.style.display = "block";
+        peaceNavBtn.style.display = "block";
+        isPaused = false;
+      }, 300000);
+    }
+
+    btn.addEventListener("click", () => {
+      if (isPaused) return; // Prevent clicks during pause
+      score++;
+      scoreBox.innerText = `${firstName} ${lastName} - Score: ${score}`;
+
+      if (score === 6) {
+        alert(`You are almost there, Shinobi ${firstName}!`);
+      } else if (score === 12) {
+        alert(`What an amazing mission, ${firstName}! : )`);
+        showFeedback();
+      } else if (score === 15) {
+        btn.style.display = "none";
+        isPaused = true;
+        showNinjaChallenge();
+      } else if (score >= 20) {
+        triggerCooldown();
+      } else {
+        alert(`Go, Ninja ${firstName}!`);
+      }
+    });
+
+    function showNinjaChallenge() {
+      const ninjaBox = document.createElement("div");
+      ninjaBox.className = "ninja-challenge";
+      ninjaBox.innerHTML = `
+        <h2>Shinobi ${firstName}, Seek the Path of Inner Peace?</h2>
+        <p>Will you master the shuriken's dance or fade into shadow?</p>
+        <button class="continue-btn" onclick="continueGame()">Embrace the Path!</button>
+        <button class="quit-btn" onclick="quitGame()">Vanish in Shame!</button>
+      `;
+      gameSection.appendChild(ninjaBox);
+    }
+    function showFeedback() {
+      const feedbackBox = document.createElement("div");
+      feedbackBox.innerHTML = `
+        <h2 style="font-size: 28px; margin-bottom: 20px; letter-spacing: 1px; white-space: nowrap;">Rate Your Inner Peace</h2>
+        <input type="range" id="peaceScale" min="0" max="50" value="0" style="
+          width: 220px;
+          padding: 14px 0;
+          background: transparent;
+          cursor: pointer;
+          outline: none;
+        "/>
+        <div id="peaceValue" style="
+          font-size: 18px;
+          margin-top: 10px;
+          color: rgba(255, 255, 255, 0.9);
+          text-shadow: 0 0 5px rgba(139,0,139,0.5);
+        ">0</div>
+        <br><br>
+        <button onclick="submitFeedback()" style="
+          padding: 14px 28px;
+          font-size: 18px;
+          border: none;
+          border-radius: 30px;
+          background: linear-gradient(45deg, #b22222, #8b0000);
+          color: white;
+          cursor: pointer;
+          box-shadow: 0 0 18px rgba(139,0,139,0.5);
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+        " onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 24px rgba(139,0,139,0.8)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 0 18px rgba(139,0,139,0.5)'">
+          Submit & Vanish
+        </button>
+      `;
+
+      feedbackBox.id = "feedbackBox";
+      feedbackBox.style.position = "absolute";
+      feedbackBox.style.top = "50%";
+      feedbackBox.style.left = "50%";
+      feedbackBox.style.transform = "translate(-50%, -50%) scale(0.9)";
+      feedbackBox.style.background = "linear-gradient(45deg, rgba(75,0,130,0.7), rgba(25,25,112,0.7))";
+      feedbackBox.style.backdropFilter = "blur(12px)";
+      feedbackBox.style.border = "2px solid rgba(139,0,139,0.5)";
+      feedbackBox.style.borderRadius = "24px";
+      feedbackBox.style.padding = "40px 50px";
+      feedbackBox.style.textAlign = "center";
+      feedbackBox.style.zIndex = "100";
+      feedbackBox.style.color = "white";
+      feedbackBox.style.boxShadow = "0 0 25px rgba(139,0,139,0.4)";
+      feedbackBox.style.animation = "scaleIn 0.8s ease forwards";
+
+      gameSection.appendChild(feedbackBox);
+
+      // Update displayed value when slider moves
+      const slider = document.getElementById("peaceScale");
+      const valueDisplay = document.getElementById("peaceValue");
+      slider.addEventListener("input", () => {
+        valueDisplay.innerText = slider.value;
+      });
+    }
+
+    function submitFeedback() {
+      const peaceValue = parseInt(document.getElementById("peaceScale").value);
+
+      if (peaceValue === 0) {
+        alert("Select a value between 1 and 50, Shinobi.");
+        return;
+      }
+
+      if (peaceValue >= 1 && peaceValue <= 50) {
+        let allPeaceLevels = JSON.parse(localStorage.getItem("peaceLevels")) || [];
+        allPeaceLevels.push({
+          firstName: firstName,
+          lastName: lastName,
+          age: age,
+          value: peaceValue
+        });
+        localStorage.setItem("peaceLevels", JSON.stringify(allPeaceLevels));
+        alert("Your inner peace level has been stored. Vanish like the wind...");
+        const fb = document.getElementById("feedbackBox");
+        if (fb) fb.remove();
+      } else {
+        alert("Select a valid number between 1 and 50.");
+      }
+    }
+
+    function loadPeaceLevels() {
+      const peaceLevels = JSON.parse(localStorage.getItem("peaceLevels")) || [];
+      const tableBody = document.getElementById("peaceTableBody");
+
+      tableBody.innerHTML = "";
+      if (peaceLevels.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">No peace levels recorded yet.</td></tr>';
+        return;
+      }
+
+      peaceLevels.forEach(entry => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${entry.firstName} ${entry.lastName}</td>
+          <td>${entry.age}</td>
+          <td>${entry.value}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    function clearData() {
+      const answer = prompt("Which is the mother of all Martial arts?");
+      if (answer && answer.trim().toUpperCase() === "KALARIPAYATTU") {
+        if (confirm("Are you sure you want to clear all peace level records? This cannot be undone.")) {
+          localStorage.removeItem("peaceLevels");
+          loadPeaceLevels();
+          alert("All records have been cleared, wise Shinobi.");
+        }
+      } else {
+        alert("Only those who know the mother of all Martial arts may clear the records.");
+      }
+    }
+
+    function continueGame() {
+      const ninjaBox = document.querySelector(".ninja-challenge");
+      if (ninjaBox) ninjaBox.remove();
+      btn.style.display = "block";
+      btn.style.opacity = "1";
+      isPaused = false;
+      moveButtonLoop();
+    }
+
+    function quitGame() {
+      const ninjaBox = document.querySelector(".ninja-challenge");
+      if (ninjaBox) ninjaBox.remove();
+      triggerCooldown();
+    }
+
+    function moveButtonLoop() {
+      const offsetPx = 0;
+      const movesNormal = [
+        { top: 65 / window.innerHeight, left: 0.5 }, // Top touch
+        { top: 1 - 65 / window.innerHeight, left: 0.5 }, // Bottom touch
+        { top: 0.1, left: 0.5 }, // Near top
+        { top: 0.50, left: 1 - 50
+        / window.innerWidth }, // Right touch
+        { top: 1 - 65 / window.innerHeight, left: 0.5 }, // Bottom touch
+        { top: 0.50, left: 50 / window.innerWidth }, // Left touch
+        { top: 65 / window.innerHeight, left: 0.5 } // Top touch
+      ];
+      let i = 0;
+      let angle = 90;
+
+      const move = () => {
+        if (isPaused) {
+          setTimeout(move, 100); // Check again soon
+          return;
+        }
+        const isNinjaPeace = score >= 15;
+        let delay;
+        if (score < 6) delay = 500;
+        else if (score < 12) delay = 450;
+        else if (score < 15) delay = 400;
+        else delay = 900;
+
+        const innerWidth = window.innerWidth;
+        const innerHeight = window.innerHeight;
+        const box = btn.getBoundingClientRect();
+
+        let currentPos;
+        if (isNinjaPeace) {
+          const teleportPoints = [
+            { top: 1 - 65 / innerHeight, left: 0.5 }, // Bottom touch
+            { top: 65 / innerHeight, left: 0.5 }, // Top touch
+            { top: 0.50, left: 1 - 50 / innerWidth }, // Right touch
+            { top: 0.50, left: 50 / innerWidth }, // Left touch
+            ...movesNormal
+          ];
+          const currentIndex = i % teleportPoints.length;
+          currentPos = teleportPoints[currentIndex];
+
+          const x = currentPos.left * innerWidth - box.width / 2;
+          const y = currentPos.top * innerHeight - box.height / 2;
+
+          btn.classList.add("teleport");
+          btn.style.opacity = "0";
+          setTimeout(() => {
+            btn.style.left = `${x}px`;
+            btn.style.top = `${y}px`;
+            btn.style.opacity = "1";
+            angle += 180;
+            btn.style.setProperty('--angle', `${angle}deg`);
+            btn.style.transform = 'rotate(var(--angle))';
+            setTimeout(() => {
+              btn.classList.remove("teleport");
+              i++;
+              if (!isPaused) move();
+            }, 900);
+          }, 80);
+        } else {
+          currentPos = movesNormal[i % movesNormal.length];
+
+          const x = currentPos.left * innerWidth - box.width / 2;
+          const y = currentPos.top * innerHeight - box.height / 2;
+
+          btn.style.left = `${x}px`;
+          btn.style.top = `${y}px`;
+          btn.style.opacity = "1";
+          angle += 180;
+          btn.style.setProperty('--angle', `${angle}deg`);
+          btn.style.transform = 'rotate(var(--angle))';
+
+          i++;
+          setTimeout(move, delay);
+        }
+      };
+      move();
+    }
+  </script>
+</body>
+</html>
